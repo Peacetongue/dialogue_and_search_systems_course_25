@@ -239,7 +239,7 @@ if __name__ == "__main__":
     print(f"BM25 результаты: {len(bm25_results)} запросов")
     
     # Метрики BM25
-    print("\n=== Метрики BM25 ===")
+    print("\nМетрики BM25")
     bm25_metrics = compute_metrics_trectools("results/bm25_run.txt", "data/qrels.txt", k=5)
     print_metrics(bm25_metrics, "BM25")
     
@@ -291,18 +291,15 @@ if __name__ == "__main__":
             f, ensure_ascii=False, indent=2
         )
     
-    # Метрики после Bi-Encoder
     biencoder_metrics = compute_metrics_trectools("results/biencoder_run.txt", "data/qrels.txt", k=5)
     print_comparison(bm25_metrics, biencoder_metrics, "Bi-Encoder")
     
-    # === Итоговая таблица ===
-    print("\n=== Итоговые результаты ===")
+    print("\nИтоговые результаты")
     print(f"{'Метрика':<20} {'BM25':>15} {'Cross-Encoder':>15} {'Bi-Encoder':>15}")
     
     for metric in sorted(bm25_metrics.keys()):
         print(f"{metric:<20} {bm25_metrics[metric]:>15.4f} {cross_metrics.get(metric, 0):>15.4f} {biencoder_metrics.get(metric, 0):>15.4f}")
     
-    # Сохраняем все метрики
     all_metrics = {
         "bm25": bm25_metrics,
         "cross_encoder": cross_metrics,

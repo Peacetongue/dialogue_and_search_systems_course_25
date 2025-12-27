@@ -30,7 +30,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Если ничего не выбрано - запускаем всё
     if not any([args.load, args.index, args.search, args.rerank]):
         args.all = True
     
@@ -55,14 +54,6 @@ def main():
     total_elapsed = time.time() - total_start
     
     print("\nПайплайн завершён")
-    print(f"Общее время: {total_elapsed:.1f} сек ({total_elapsed / 60:.1f} мин)")
-    print("\nРезультаты сохранены в директории 'results/':")
-    print("  - bm25_run.txt           : Результаты BM25 в формате TREC")
-    print("  - bm25_results.json      : Результаты BM25 в JSON")
-    print("  - bm25_metrics.json      : Метрики BM25")
-    print("  - cross_encoder_run.txt  : Результаты Cross-Encoder")
-    print("  - biencoder_run.txt      : Результаты Bi-Encoder")
-    print("  - all_metrics.json       : Сравнение всех метрик")
 
 
 if __name__ == "__main__":
