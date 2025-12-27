@@ -134,7 +134,7 @@ def load_smart_corpus(
                 print(f"  Найдено релевантных: {len(relevant_docs)}/{len(relevant_doc_ids)}", end="\r")
         
         # Собираем нерелевантные кандидаты
-        elif len(irrelevant_candidates) < num_irrelevant * 2:  # Берём с запасом
+        elif len(irrelevant_candidates) < num_irrelevant * 2:
             if random.random() < 0.3:
                 irrelevant_candidates.append(doc_data)
         
