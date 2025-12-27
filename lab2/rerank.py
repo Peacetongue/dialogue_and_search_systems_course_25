@@ -54,9 +54,6 @@ def rerank_with_cross_encoder(
         model_name: Название модели Cross-Encoder
         top_k_rerank: Количество документов для переранжирования
         batch_size: Размер батча
-    
-    Returns:
-        Переранжированные результаты
     """
     print(f"\nЗагрузка модели Cross-Encoder: {model_name}")
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
