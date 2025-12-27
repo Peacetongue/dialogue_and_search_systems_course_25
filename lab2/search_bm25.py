@@ -39,9 +39,9 @@ def search_bm25(
             "query": {
                 "multi_match": {
                     "query": query,
-                    "fields": ["title^3", "text"],
-                    "type": "best_fields",
-                    "operator": "or"
+                    "fields": ["title^3", "text"], # "title^3" при поиске в поле "title" умножить его релевантность на 3 (повысить приоритет заголовков).
+                    "type": "best_fields",  # "best_fields" — ищет запрос в каждом поле отдельно и возвращает документы,
+                    "operator": "or" # or — документ подходит, если содержит хотя бы одно слово из запроса /and — все слова должны присутствовать)
                 }
             },
             "size": top_k
