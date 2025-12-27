@@ -1,17 +1,14 @@
-"""
-Переранжирование результатов с использованием Cross-Encoder
-- Использует модель из SentenceTransformers
-- Переранжирует топ-50 документов из BM25
-- Вычисляет метрики до и после ранжирования
-"""
-
 import json
 import os
+import warnings
 from typing import Dict, List, Tuple
 
 import torch
 from sentence_transformers import CrossEncoder
 from tqdm import tqdm
+from trectools import TrecRun, TrecQrel, TrecEval
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def load_corpus(corpus_path: str) -> Dict[str, dict]:
@@ -165,58 +162,33 @@ def rerank_with_sentence_transformer(
     return reranked_results
 
 
-def compute_metrics_manual(
-    search_results: Dict[str, List[Tuple[str, float]]],
-    qrels: Dict[str, Dict[str, int]],
+def compute_metrics_trectools(
+    run_file_path: str,
+    qrels_file_path: str = "data/qrels.txt",
     k: int = 5
 ) -> Dict[str, float]:
-    """Вычисляет метрики вручную."""
-    precisions = []
-    recalls = []
-    aps = []
-    rrs = []
+    """
+    Вычисляет метрики поиска с использованием trectools.
+    Precision@k, Recall@k, MAP@k, MRR@k
+    """
+    # Загружаем run и qrels из файлов
+    run = TrecRun(run_file_path)
+    qrels_obj = TrecQrel(qrels_file_path)
     
-    for query_id, doc_scores in search_results.items():
-        if query_id not in qrels:
-            continue
-        
-        relevant_docs = set(
-            doc_id for doc_id, rel in qrels[query_id].items() if rel > 0
-        )
-        
-        if not relevant_docs:
-            continue
-        
-        top_k_docs = [doc_id for doc_id, _ in doc_scores[:k]]
-        
-        relevant_in_top_k = sum(1 for doc_id in top_k_docs if doc_id in relevant_docs)
-        precision = relevant_in_top_k / k
-        precisions.append(precision)
-        
-        recall = relevant_in_top_k / len(relevant_docs) if relevant_docs else 0
-        recalls.append(recall)
-        
-        ap = 0.0
-        num_relevant = 0
-        for i, doc_id in enumerate(top_k_docs):
-            if doc_id in relevant_docs:
-                num_relevant += 1
-                ap += num_relevant / (i + 1)
-        ap = ap / min(len(relevant_docs), k) if relevant_docs else 0
-        aps.append(ap)
-        
-        rr = 0.0
-        for i, doc_id in enumerate(top_k_docs):
-            if doc_id in relevant_docs:
-                rr = 1.0 / (i + 1)
-                break
-        rrs.append(rr)
+    # Создаем объект для вычисления метрик
+    evaluator = TrecEval(run, qrels_obj)
+    
+    # Вычисляем метрики
+    p_at_k = evaluator.get_precision(depth=k)
+    r_at_k = evaluator.get_recall(depth=k)
+    map_at_k = evaluator.get_map(depth=k)
+    mrr = evaluator.get_reciprocal_rank()
     
     return {
-        f"precision@{k}": sum(precisions) / len(precisions) if precisions else 0,
-        f"recall@{k}": sum(recalls) / len(recalls) if recalls else 0,
-        f"map@{k}": sum(aps) / len(aps) if aps else 0,
-        f"mrr@{k}": sum(rrs) / len(rrs) if rrs else 0
+        f"precision@{k}": p_at_k,
+        f"recall@{k}": r_at_k,
+        f"map@{k}": map_at_k,
+        f"mrr@{k}": mrr
     }
 
 
@@ -235,11 +207,8 @@ def save_run_file(
 
 def print_comparison(bm25_metrics: dict, reranked_metrics: dict, method_name: str):
     """Выводит сравнение метрик."""
-    print("\n" + "=" * 70)
-    print(f"СРАВНЕНИЕ: BM25 vs {method_name}")
-    print("=" * 70)
+    print(f"\nСравнение: BM25 vs {method_name}")
     print(f"{'Метрика':<20} {'BM25':>12} {method_name:>12} {'Δ':>12} {'%':>10}")
-    print("-" * 70)
     
     for metric in sorted(bm25_metrics.keys()):
         bm25_val = bm25_metrics[metric]
@@ -248,8 +217,13 @@ def print_comparison(bm25_metrics: dict, reranked_metrics: dict, method_name: st
         pct = (delta / bm25_val * 100) if bm25_val != 0 else 0
         sign = "+" if delta > 0 else ""
         print(f"{metric:<20} {bm25_val:>12.4f} {rerank_val:>12.4f} {sign}{delta:>11.4f} {sign}{pct:>9.1f}%")
-    
-    print("=" * 70)
+
+
+def print_metrics(metrics: dict, title: str):
+    """Выводит метрики."""
+    print(f"\n{title}:")
+    for name, value in sorted(metrics.items()):
+        print(f"{name}: {value:.4f}")
 
 
 if __name__ == "__main__":
@@ -265,20 +239,18 @@ if __name__ == "__main__":
     print(f"BM25 результаты: {len(bm25_results)} запросов")
     
     # Метрики BM25
-    bm25_metrics = compute_metrics_manual(bm25_results, qrels, k=5)
-    print("\n--- Метрики BM25 ---")
-    for name, value in sorted(bm25_metrics.items()):
-        print(f"{name}: {value:.4f}")
+    print("\n=== Метрики BM25 ===")
+    bm25_metrics = compute_metrics_trectools("results/bm25_run.txt", "data/qrels.txt", k=5)
+    print_metrics(bm25_metrics, "BM25")
     
     os.makedirs("results", exist_ok=True)
     
     # === Переранжирование с Cross-Encoder ===
-    print("\n" + "=" * 70)
-    print("ПЕРЕРАНЖИРОВАНИЕ С CROSS-ENCODER")
-    print("=" * 70)
+    print("\nПереранжирование с Cross-Encoder")
     
-    # Используем мультиязычную модель для русского языка
-    cross_encoder_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    # Мультиязычная модель, обученная на mMARCO (включая русский язык)
+    # L12 версия - более мощная и точно доступна
+    cross_encoder_model = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     
     reranked_cross = rerank_with_cross_encoder(
         queries, bm25_results, corpus,
@@ -295,16 +267,15 @@ if __name__ == "__main__":
         )
     
     # Метрики после Cross-Encoder
-    cross_metrics = compute_metrics_manual(reranked_cross, qrels, k=5)
+    cross_metrics = compute_metrics_trectools("results/cross_encoder_run.txt", "data/qrels.txt", k=5)
     print_comparison(bm25_metrics, cross_metrics, "Cross-Encoder")
     
     # === Переранжирование с Sentence Transformer (Bi-Encoder) ===
-    print("\n" + "=" * 70)
-    print("ПЕРЕРАНЖИРОВАНИЕ С SENTENCE TRANSFORMER (BI-ENCODER)")
-    print("=" * 70)
+    print("\nПереранжирование с Sentence Transformer (Bi-Encoder)")
     
-    # Мультиязычная модель
-    biencoder_model = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    # Мультиязычная модель (отлично работает с русским)
+    # Альтернативы: "intfloat/multilingual-e5-base" или "sentence-transformers/LaBSE"
+    biencoder_model = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     
     reranked_biencoder = rerank_with_sentence_transformer(
         queries, bm25_results, corpus,
@@ -321,20 +292,15 @@ if __name__ == "__main__":
         )
     
     # Метрики после Bi-Encoder
-    biencoder_metrics = compute_metrics_manual(reranked_biencoder, qrels, k=5)
+    biencoder_metrics = compute_metrics_trectools("results/biencoder_run.txt", "data/qrels.txt", k=5)
     print_comparison(bm25_metrics, biencoder_metrics, "Bi-Encoder")
     
     # === Итоговая таблица ===
-    print("\n" + "=" * 80)
-    print("ИТОГОВЫЕ РЕЗУЛЬТАТЫ")
-    print("=" * 80)
+    print("\n=== Итоговые результаты ===")
     print(f"{'Метрика':<20} {'BM25':>15} {'Cross-Encoder':>15} {'Bi-Encoder':>15}")
-    print("-" * 80)
     
     for metric in sorted(bm25_metrics.keys()):
         print(f"{metric:<20} {bm25_metrics[metric]:>15.4f} {cross_metrics.get(metric, 0):>15.4f} {biencoder_metrics.get(metric, 0):>15.4f}")
-    
-    print("=" * 80)
     
     # Сохраняем все метрики
     all_metrics = {

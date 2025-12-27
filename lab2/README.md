@@ -16,10 +16,10 @@
 lab2/
 ├── docker-compose.yml          # ElasticSearch
 ├── requirements.txt            # Python зависимости
-├── 01_load_data.py            # Загрузка данных Mr. TyDi
-├── 02_index_elasticsearch.py   # Индексация в ElasticSearch
-├── 03_search_bm25.py          # Поиск BM25 и метрики
-├── 04_rerank.py               # Переранжирование
+├── load_data.py            # Загрузка данных Mr. TyDi
+├── index_elasticsearch.py   # Индексация в ElasticSearch
+├── search_bm25.py          # Поиск BM25 и метрики
+├── rerank.py               # Переранжирование
 ├── run_pipeline.py            # Запуск всего пайплайна
 ├── data/                      # Данные (создаётся автоматически)
 │   ├── corpus.json
@@ -33,35 +33,50 @@ lab2/
 
 ## Быстрый старт
 
-### 1. Запустите ElasticSearch
+### 1. Запустите контейнеры Docker
 
 ```bash
 cd lab2
 docker-compose up -d
 ```
 
-Дождитесь запуска (~30 сек):
+Это запустит:
+- **elasticsearch** - поисковый движок на порту 9200
+- **main** - Python-контейнер для запуска скриптов
+
+Дождитесь, пока Elasticsearch станет здоровым (~30 сек):
 ```bash
-curl http://localhost:9200/_cluster/health
+docker-compose ps
 ```
 
-### 2. Установите зависимости Python
+### 2. Установите Python зависимости в контейнере
 
 ```bash
-pip install -r requirements.txt
+docker-compose exec main pip install -r requirements.txt
 ```
 
 ### 3. Запустите пайплайн
 
+**Весь пайплайн сразу:**
 ```bash
-# Весь пайплайн
-python run_pipeline.py --all
+docker-compose exec main python run_pipeline.py --all
+```
 
-# Или по частям:
-python 01_load_data.py           # Загрузка данных
-python 02_index_elasticsearch.py  # Индексация
-python 03_search_bm25.py          # Поиск и метрики BM25
-python 04_rerank.py               # Переранжирование
+**Или по частям:**
+```bash
+docker-compose exec main python load_data.py           # Загрузка данных Mr. TyDi
+docker-compose exec main python index_elasticsearch.py  # Индексация в ElasticSearch
+docker-compose exec main python search_bm25.py          # Поиск BM25 и метрики
+docker-compose exec main python rerank.py               # Переранжирование
+```
+
+**Для интерактивной работы:**
+```bash
+docker-compose exec main bash
+# Внутри контейнера:
+python load_data.py
+python index_elasticsearch.py
+# и т.д.
 ```
 
 ## Метрики
@@ -123,11 +138,16 @@ python 04_rerank.py               # Переранжирование
 }
 ```
 
-## Остановка ElasticSearch
+## Остановка системы
 
 ```bash
+# Остановить контейнеры
+docker-compose stop
+
+# Остановить и удалить контейнеры
 docker-compose down
-# Или с удалением данных:
+
+# Остановить и удалить контейнеры + данные ElasticSearch
 docker-compose down -v
 ```
 

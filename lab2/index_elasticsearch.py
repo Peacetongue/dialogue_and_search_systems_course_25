@@ -15,11 +15,11 @@ def wait_for_elasticsearch(es: Elasticsearch, max_retries: int = 30, delay: int 
     """Ожидает готовности ElasticSearch."""
     for i in range(max_retries):
         try:
-            if es.ping():
-                print("ElasticSearch доступен!")
-                return True
+            es.info()
+            print("ElasticSearch доступен!")
+            return True
         except Exception as e:
-            print(f"Попытка {i + 1}/{max_retries}: ElasticSearch не готов...")
+            print(f"Попытка {i + 1}/{max_retries}: ElasticSearch не готов... ({e})")
         time.sleep(delay)
     raise ConnectionError("Не удалось подключиться к ElasticSearch")
 
@@ -155,17 +155,21 @@ def test_search(es: Elasticsearch, index_name: str = "mrtydi_russian"):
         }
     )
     
-    print(f"\n--- Тестовый поиск: '{query}' ---")
+    print(f"\nТестовый поиск: '{query}'")
     for hit in result["hits"]["hits"]:
         print(f"Score: {hit['_score']:.4f}")
         print(f"Title: {hit['_source']['title'][:100]}...")
         print(f"Text: {hit['_source']['text'][:200]}...")
-        print("-" * 50)
 
 
 if __name__ == "__main__":
     # Подключение к ElasticSearch
-    es = Elasticsearch(["http://localhost:9200"])
+    es_host = os.getenv("ELASTICSEARCH_HOST", "localhost")
+    es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
+    es_url = f"http://{es_host}:{es_port}"
+    
+    print(f"Подключение к ElasticSearch: {es_url}")
+    es = Elasticsearch([es_url])
     
     # Ждём готовности ES
     wait_for_elasticsearch(es)
@@ -180,4 +184,4 @@ if __name__ == "__main__":
         index_documents(es, corpus_path, index_name)
         test_search(es, index_name)
     else:
-        print(f"Ошибка: файл {corpus_path} не найден. Сначала запустите 01_load_data.py")
+        print(f"Ошибка: файл {corpus_path} не найден. Сначала запустите load_data.py")

@@ -1,15 +1,3 @@
-"""
-Основной скрипт для запуска всего пайплайна лабораторной работы
-Гибридный поиск: BM25 + Re-ranking
-
-Использование:
-    python run_pipeline.py --all           # Запустить весь пайплайн
-    python run_pipeline.py --load          # Только загрузка данных
-    python run_pipeline.py --index         # Только индексация
-    python run_pipeline.py --search        # Только поиск BM25
-    python run_pipeline.py --rerank        # Только переранжирование
-"""
-
 import argparse
 import subprocess
 import sys
@@ -18,16 +6,14 @@ import time
 
 def run_script(script_name: str, description: str):
     """Запускает Python скрипт."""
-    print("\n" + "=" * 70)
-    print(f"ЭТАП: {description}")
-    print("=" * 70)
+    print(f"\nЭтап: {description}")
     
     start_time = time.time()
     result = subprocess.run([sys.executable, script_name], capture_output=False)
     elapsed = time.time() - start_time
     
     if result.returncode != 0:
-        print(f"ОШИБКА: Скрипт {script_name} завершился с кодом {result.returncode}")
+        print(f"Ошибка: скрипт {script_name} завершился с кодом {result.returncode}")
         sys.exit(1)
     
     print(f"Время выполнения: {elapsed:.1f} сек")
@@ -48,32 +34,28 @@ def main():
     if not any([args.load, args.index, args.search, args.rerank]):
         args.all = True
     
-    print("=" * 70)
-    print("ЛАБОРАТОРНАЯ РАБОТА №2")
+    print("Лабораторная работа №2")
     print("Гибридный поиск и ранжирование (Retrieve & Re-Rank)")
     print("Датасет: Mr. TyDi (русский язык)")
-    print("=" * 70)
     
     total_start = time.time()
     
     if args.all or args.load:
-        run_script("01_load_data.py", "Загрузка данных Mr. TyDi")
+        run_script("load_data_smart.py", "Загрузка данных Mr. TyDi (сбалансированный корпус 100k)")
     
     if args.all or args.index:
-        run_script("02_index_elasticsearch.py", "Индексация в ElasticSearch")
+        run_script("index_elasticsearch.py", "Индексация в ElasticSearch")
     
     if args.all or args.search:
-        run_script("03_search_bm25.py", "Поиск BM25 и вычисление метрик")
+        run_script("search_bm25.py", "Поиск BM25 и вычисление метрик")
     
     if args.all or args.rerank:
-        run_script("04_rerank.py", "Переранжирование с нейросетями")
+        run_script("rerank.py", "Переранжирование с нейросетями")
     
     total_elapsed = time.time() - total_start
     
-    print("\n" + "=" * 70)
-    print("ПАЙПЛАЙН ЗАВЕРШЁН")
+    print("\nПайплайн завершён")
     print(f"Общее время: {total_elapsed:.1f} сек ({total_elapsed / 60:.1f} мин)")
-    print("=" * 70)
     print("\nРезультаты сохранены в директории 'results/':")
     print("  - bm25_run.txt           : Результаты BM25 в формате TREC")
     print("  - bm25_results.json      : Результаты BM25 в JSON")

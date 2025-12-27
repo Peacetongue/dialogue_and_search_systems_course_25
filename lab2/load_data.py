@@ -1,25 +1,24 @@
-"""
-Загрузка данных Mr. TyDi (русский язык)
-- Загружает документы и запросы
-- Формирует qrels (релевантность документов к запросам)
-"""
-
 import json
 import os
 from datasets import load_dataset
 from tqdm import tqdm
 
 
-def load_mrtydi_corpus(save_dir: str = "data"):
+def load_mrtydi_corpus(save_dir: str = "data", max_docs: int = 100000):
     """
     Загружает корпус документов Mr. TyDi для русского языка.
     """
     os.makedirs(save_dir, exist_ok=True)
     
-    print("Загрузка корпуса Mr. TyDi (русский)...")
-    corpus = load_dataset("castorini/mr-tydi-corpus", "russian", split="train")
+    print(f"Загрузка корпуса Mr. TyDi (русский, первые {max_docs} документов)...")
+    corpus = load_dataset(
+        "castorini/mr-tydi-corpus", 
+        "russian", 
+        split=f"train[:{max_docs}]", 
+        trust_remote_code=True
+    )
     
-    print(f"Всего документов в корпусе: {len(corpus)}")
+    print(f"Загружено документов: {len(corpus)}")
     
     # Сохраняем документы
     documents = {}
@@ -49,7 +48,7 @@ def load_mrtydi_queries(save_dir: str = "data"):
     print("\nЗагрузка запросов Mr. TyDi (русский)...")
     
     # Загружаем dev split (содержит запросы с релевантными документами)
-    dataset = load_dataset("castorini/mr-tydi", "russian")
+    dataset = load_dataset("castorini/mr-tydi", "russian", trust_remote_code=True)
     
     queries = {}
     qrels = {}  # query_id -> {doc_id: relevance}
@@ -143,14 +142,8 @@ def get_statistics(save_dir: str = "data"):
         for docs in qrels.values()
     )
     
-    print("\n" + "=" * 50)
-    print("СТАТИСТИКА ДАННЫХ")
-    print("=" * 50)
-    print(f"Документов в корпусе: {len(corpus)}")
-    print(f"Запросов: {len(queries)}")
-    print(f"Всего релевантных пар (query, doc): {total_relevant}")
-    print(f"Среднее кол-во релевантных док. на запрос: {total_relevant / len(queries):.2f}")
-    print("=" * 50)
+    print(f"Corpus: {len(corpus)} docs, Queries: {len(queries)}, Total relevant pairs: {total_relevant}")
+    print(f"Avg relevant per query: {total_relevant / len(queries):.2f}")
 
 
 if __name__ == "__main__":
