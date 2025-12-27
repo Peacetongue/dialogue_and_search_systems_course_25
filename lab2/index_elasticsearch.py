@@ -34,8 +34,8 @@ def create_index(es: Elasticsearch, index_name: str = "mrtydi_russian"):
     
     index_settings = {
         "settings": {
-            "number_of_shards": 1,
-            "number_of_replicas": 0,
+            "number_of_shards": 1, # шард горизонтальные разделы индекса, шард — независимый индекс, используются для масштабирования и параллельной обработки
+            "number_of_replicas": 0,  # реплики - копии шардов, используемые для отказоустойчивости и повышения скорости чтения
             "analysis": {
                 "filter": {
                     "russian_stop": {
@@ -62,7 +62,7 @@ def create_index(es: Elasticsearch, index_name: str = "mrtydi_russian"):
         },
         "mappings": {
             "properties": {
-                "docid": {"type": "keyword"},
+                "docid": {"type": "keyword"}, # keyword - значение сохраняется как есть (без analyzer), подходит для фильтрации и сортировки
                 "title": {
                     "type": "text",
                     "analyzer": "russian_analyzer"
