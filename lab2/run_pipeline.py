@@ -33,14 +33,10 @@ def main():
     if not any([args.load, args.index, args.search, args.rerank]):
         args.all = True
     
-    print("Лабораторная работа №2")
-    print("Гибридный поиск и ранжирование (Retrieve & Re-Rank)")
-    print("Датасет: Mr. TyDi (русский язык)")
-    
     total_start = time.time()
     
     if args.all or args.load:
-        run_script("load_data_smart.py", "Загрузка данных Mr. TyDi (сбалансированный корпус 100k)")
+        run_script("load_data_smart.py", "Загрузка данных Mr. TyDi")
     
     if args.all or args.index:
         run_script("index_elasticsearch.py", "Индексация в ElasticSearch")

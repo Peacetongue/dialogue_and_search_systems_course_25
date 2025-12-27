@@ -82,7 +82,6 @@ def rerank_with_cross_encoder(
         for doc_id, _ in candidates:
             if doc_id in corpus:
                 doc_text = corpus[doc_id].get("title", "") + " " + corpus[doc_id]["text"]
-                # Ограничиваем длину документа
                 doc_text = doc_text[:1000]
                 pairs.append([query_text, doc_text])
                 doc_ids.append(doc_id)
@@ -171,14 +170,11 @@ def compute_metrics_trectools(
     Вычисляет метрики поиска с использованием trectools.
     Precision@k, Recall@k, MAP@k, MRR@k
     """
-    # Загружаем run и qrels из файлов
     run = TrecRun(run_file_path)
     qrels_obj = TrecQrel(qrels_file_path)
     
-    # Создаем объект для вычисления метрик
     evaluator = TrecEval(run, qrels_obj)
     
-    # Вычисляем метрики
     p_at_k = evaluator.get_precision(depth=k)
     r_at_k = evaluator.get_recall(depth=k)
     map_at_k = evaluator.get_map(depth=k)
@@ -227,7 +223,6 @@ def print_metrics(metrics: dict, title: str):
 
 
 if __name__ == "__main__":
-    # Загружаем данные
     print("Загрузка данных...")
     corpus = load_corpus("data/corpus.json")
     queries = load_queries("data/queries.json")
@@ -238,18 +233,14 @@ if __name__ == "__main__":
     print(f"Запросы: {len(queries)}")
     print(f"BM25 результаты: {len(bm25_results)} запросов")
     
-    # Метрики BM25
     print("\nМетрики BM25")
     bm25_metrics = compute_metrics_trectools("results/bm25_run.txt", "data/qrels.txt", k=5)
     print_metrics(bm25_metrics, "BM25")
     
     os.makedirs("results", exist_ok=True)
     
-    # === Переранжирование с Cross-Encoder ===
     print("\nПереранжирование с Cross-Encoder")
     
-    # Мультиязычная модель, обученная на mMARCO (включая русский язык)
-    # L12 версия - более мощная и точно доступна
     cross_encoder_model = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     
     reranked_cross = rerank_with_cross_encoder(
@@ -258,7 +249,6 @@ if __name__ == "__main__":
         top_k_rerank=50
     )
     
-    # Сохраняем результаты
     save_run_file(reranked_cross, "results/cross_encoder_run.txt", "cross_encoder")
     with open("results/cross_encoder_results.json", "w", encoding="utf-8") as f:
         json.dump(
@@ -266,15 +256,11 @@ if __name__ == "__main__":
             f, ensure_ascii=False, indent=2
         )
     
-    # Метрики после Cross-Encoder
     cross_metrics = compute_metrics_trectools("results/cross_encoder_run.txt", "data/qrels.txt", k=5)
     print_comparison(bm25_metrics, cross_metrics, "Cross-Encoder")
     
-    # === Переранжирование с Sentence Transformer (Bi-Encoder) ===
     print("\nПереранжирование с Sentence Transformer (Bi-Encoder)")
     
-    # Мультиязычная модель (отлично работает с русским)
-    # Альтернативы: "intfloat/multilingual-e5-base" или "sentence-transformers/LaBSE"
     biencoder_model = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     
     reranked_biencoder = rerank_with_sentence_transformer(
@@ -283,7 +269,6 @@ if __name__ == "__main__":
         top_k_rerank=50
     )
     
-    # Сохраняем результаты
     save_run_file(reranked_biencoder, "results/biencoder_run.txt", "biencoder")
     with open("results/biencoder_results.json", "w", encoding="utf-8") as f:
         json.dump(

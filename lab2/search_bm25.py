@@ -33,14 +33,13 @@ def search_bm25(
     Поиск документов по запросу с использованием BM25.
     Возвращает список (doc_id, score).
     """
-    # Улучшенный поиск: boost для заголовков, multi_match
-    result = es.search(
+    result = es.search( # с версии 5 по дефолту исопльзуется BM25
         index=index_name,
         body={
             "query": {
                 "multi_match": {
                     "query": query,
-                    "fields": ["title^3", "text"],  # Заголовок в 3 раза важнее
+                    "fields": ["title^3", "text"],
                     "type": "best_fields",
                     "operator": "or"
                 }
@@ -83,14 +82,11 @@ def compute_metrics_trectools(
     Вычисляет метрики поиска с использованием trectools.
     Precision@k, Recall@k, MAP@k, MRR@k
     """
-    # Загружаем run и qrels из файлов
     run = TrecRun(run_file_path)
     qrels_obj = TrecQrel(qrels_file_path)
     
-    # Создаем объект для вычисления метрик
     evaluator = TrecEval(run, qrels_obj)
     
-    # Вычисляем метрики
     p_at_k = evaluator.get_precision(depth=k)
     r_at_k = evaluator.get_recall(depth=k)
     map_at_k = evaluator.get_map(depth=k)
@@ -120,7 +116,6 @@ def save_run_file(
 
 
 if __name__ == "__main__":
-    # Подключение к ElasticSearch
     es_host = os.getenv("ELASTICSEARCH_HOST", "localhost")
     es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
     es_url = f"http://{es_host}:{es_port}"
@@ -128,21 +123,16 @@ if __name__ == "__main__":
     print(f"Подключение к ElasticSearch: {es_url}")
     es = Elasticsearch([es_url])
     
-    # Загружаем данные
     queries = load_queries("data/queries.json")
     qrels = load_qrels("data/qrels.json")
     
     print(f"Загружено {len(queries)} запросов и {len(qrels)} qrels")
     
-    # Поиск BM25 (топ-50 для последующего ранжирования)
     index_name = "mrtydi_russian"
-    search_results = search_all_queries(es, queries, index_name, top_k=50)
-    
-    # Сохраняем результаты
+    search_results = search_all_queries(es, queries, index_name, top_k=50) 
     os.makedirs("results", exist_ok=True)
     save_run_file(search_results, "results/bm25_run.txt", "bm25")
     
-    # Также сохраняем в JSON для последующего использования
     with open("results/bm25_results.json", "w", encoding="utf-8") as f:
         json.dump(
             {qid: [(d, s) for d, s in docs] for qid, docs in search_results.items()},
@@ -151,8 +141,7 @@ if __name__ == "__main__":
             indent=2
         )
     
-    # Вычисляем метрики
-    print("\nМетрики BM25 (trectools):")
+    print("\nМетрики BM25:")
     metrics = compute_metrics_trectools(
         search_results, qrels, 
         "results/bm25_run.txt", 
@@ -162,7 +151,6 @@ if __name__ == "__main__":
     for name, value in sorted(metrics.items()):
         print(f"{name}: {value:.4f}")
     
-    # Сохраняем метрики
     with open("results/bm25_metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
     print("\nМетрики сохранены в results/bm25_metrics.json")

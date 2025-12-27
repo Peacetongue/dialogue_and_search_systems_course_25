@@ -28,12 +28,10 @@ def create_index(es: Elasticsearch, index_name: str = "mrtydi_russian"):
     """
     Создаёт индекс с русским анализатором для BM25.
     """
-    # Удаляем индекс, если существует
     if es.indices.exists(index=index_name):
         print(f"Удаление существующего индекса '{index_name}'...")
         es.indices.delete(index=index_name)
     
-    # Настройки индекса с русским анализатором
     index_settings = {
         "settings": {
             "number_of_shards": 1,
@@ -163,7 +161,6 @@ def test_search(es: Elasticsearch, index_name: str = "mrtydi_russian"):
 
 
 if __name__ == "__main__":
-    # Подключение к ElasticSearch
     es_host = os.getenv("ELASTICSEARCH_HOST", "localhost")
     es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
     es_url = f"http://{es_host}:{es_port}"
@@ -171,14 +168,11 @@ if __name__ == "__main__":
     print(f"Подключение к ElasticSearch: {es_url}")
     es = Elasticsearch([es_url])
     
-    # Ждём готовности ES
     wait_for_elasticsearch(es)
     
-    # Создаём индекс
     index_name = "mrtydi_russian"
     create_index(es, index_name)
     
-    # Индексируем документы
     corpus_path = "data/corpus.json"
     if os.path.exists(corpus_path):
         index_documents(es, corpus_path, index_name)
